@@ -29,7 +29,7 @@ typedef struct
 } LS;
 
 // Взаимодействие с линейным списком
-LS* add_node(LS* node, char comes[11], char sender[MAX_NAME_LEN], char name[MAX_NAME_LEN], \
+void add_node(LS* node, char comes[11], char sender[MAX_NAME_LEN], char name[MAX_NAME_LEN], \
             int weight, int count, enum Images images, char worker[MAX_NAME_LEN]) // Добавить элемент в ЛС node - укаель на последний э-нт
 {
     if (node == NULL) // Создаём корневой узел
@@ -48,9 +48,19 @@ LS* add_node(LS* node, char comes[11], char sender[MAX_NAME_LEN], char name[MAX_
     }
 }
 
-void del_node()
+void del_node(LS* node, char comes[11], char sender[MAX_NAME_LEN], char name[MAX_NAME_LEN], \
+    int weight, int count, enum Images images, char worker[MAX_NAME_LEN]) // Удалить элемент из ЛС node - укаель на элемент после которого удаляем э-нт
 {
-
+    if (node->next != NULL)
+    {
+        LS* free_pointer = node->next;
+        node->next = node->next->next;
+        free(free_pointer);
+    }
+    else
+    {
+        print("Nothing to delete"); 
+    }
 }
 
 
