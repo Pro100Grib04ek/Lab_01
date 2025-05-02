@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <locale.h>
+#include <time.h>
 
 #pragma warning(disable : 4996)
 
@@ -34,7 +35,7 @@ enum Images str_to_image(char* str)
 // Реализация линейного списка
 typedef struct
 {
-    char comes[11]; // DD.MM.YYYY - дата поступления 
+    time_t comes; // DD.MM.YYYY - дата поступления - ОБЯЗАТЕЛЬНО TODO в UNIX-timestamp
     char sender[MAX_NAME_LEN]; // Грузоотправитель
     char name[MAX_NAME_LEN]; // Наименование товара
     int weight; // Вес
@@ -44,17 +45,45 @@ typedef struct
     struct LS* next; // Указатель на след. элемента 
 } LS;
 
+/* Работа с датой */
+time_t date_to_timestamp(char* date_str) {
+    struct tm tm = { 0 }; // Инициализируем структуру нулями
+    time_t timestamp;
+
+    // Разбираем строку в формате DD.MM.YYYY
+    if (sscanf(date_str, "%d.%d.%d", &tm.tm_mday, &tm.tm_mon, &tm.tm_year) != 3) {
+        return -1; // Ошибка формата
+    }
+
+    // Корректировка полей структуры tm
+    tm.tm_mon -= 1;    // Месяцы в struct tm: 0-11
+    tm.tm_year -= 1900; // Год в struct tm: с 1900
+
+    // Преобразуем в time_t (UNIX-время)
+    timestamp = mktime(&tm);
+
+    return timestamp;
+}
+
+void timestamp_to_date(time_t timestamp, char* output) {
+    struct tm* tm_info = localtime(&timestamp);
+    snprintf(output, 11, "%02d.%02d.%04d",
+        tm_info->tm_mday,
+        tm_info->tm_mon + 1,  // +1, т.к. месяцы 0-11
+        tm_info->tm_year + 1900); // +1900, т.к. год отсчитывается с 1900
+}
+
 /* Взаимодействие с линейным списком */
 
 // Вспомогательная штука - создаёт node и возращает указатель на него
-LS* create_node(char* comes, char* sender, char* name, \
+LS* create_node(time_t comes, char* sender, char* name, \
     int weight, int count, enum Images images, char* worker) {
     LS* new_node = (LS*)malloc(sizeof(LS));
     if (new_node == NULL) {
         printf("Ошибка выделения памяти!\n");
         exit(1);
     }
-    strcpy(new_node->comes, comes);
+    new_node->comes = comes;
     strcpy(new_node->sender, sender);
     strcpy(new_node->name, name);
     new_node->weight = weight;
@@ -67,7 +96,7 @@ LS* create_node(char* comes, char* sender, char* name, \
 }
 
 // Вот через это добавляем ноды
-void add_node(char* comes, char* sender, char* name, \
+void add_node(time_t comes, char* sender, char* name, \
     int weight, int count, enum Images images, char worker[MAX_NAME_LEN]) {
 
     LS* new_node = create_node(comes, sender, name, weight, count, images, worker);
@@ -106,21 +135,35 @@ void add_node(LS* node, char comes[11], char sender[MAX_NAME_LEN], char name[MAX
 }
 */
 
-void del_node(LS* node) // Удалить элемент из ЛС node - укаель на элемент после которого удаляем э-нт
+void del_node(LS* node_to_del) // Удалить элемент из ЛС node - указатель на удаляемый э-нт
 {
-    if (node->next != NULL)
-    {
-        LS* free_pointer = node->next;
-       // node->next = node->next->next;
-        free(free_pointer);
+    // Если удаляемый узел — голова списка
+    if (Head == node_to_del) {
+        Head = node_to_del->next;
+        free(node_to_del);
+        return;
     }
-    else
-    {
-        printf("Nothing to delete");
+
+    // Ищем предыдущий узел перед nodeToDelete
+    LS* current = Head;
+    while (current != NULL && current->next != node_to_del) {
+        current = current->next;
     }
+
+    // Если узел не найден в списке
+    if (current == NULL) {
+        printf("Узел не принадлежит списку!\n");
+        return;
+    }
+
+    // Перелинковка и удаление
+    current->next = node_to_del->next;
+    free(node_to_del);
+    return;
 }
 
-// Команды к БД:
+/* Команды к БД */
+
 void select(char* args)
 {
     return;
@@ -133,7 +176,7 @@ void delete(char* args)
 
 void insert(char* args)
 {
-    char* comes = NULL;
+    time_t comes;
     char* sender = NULL;
     char* name = NULL;
     int weight;
@@ -151,7 +194,7 @@ void insert(char* args)
         char* value = equal_pos + 1;
 
         if (strcmp(field, "comes") == 0 && was_comes == 1) { printf("input error"); return; }
-        if (strcmp(field, "comes") == 0 && was_comes == 0) { comes = value; was_comes = 1; }
+        if (strcmp(field, "comes") == 0 && was_comes == 0) { comes = date_to_timestamp(value); was_comes = 1; }
 
         if (strcmp(field, "sender") == 0 && was_sender == 1) { printf("input error"); return; }
         if (strcmp(field, "sender") == 0 && was_sender == 0) { sender = value; was_sender = 1; }
@@ -207,7 +250,9 @@ void print_nodes(LS* node) // node -> указатель на первый э-н
 {
     if (node != NULL)
     {
-        printf("%s\n", node->comes);
+        char comes[11];
+        timestamp_to_date(node->comes, comes);
+        printf("%s\n", comes);
         printf("%s\n", node->sender);
         printf("%s\n", node->name);
         printf("%d\n", node->weight);
