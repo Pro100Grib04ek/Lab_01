@@ -6,8 +6,6 @@
 
 #pragma warning(disable : 4996)
 
-struct LS* Head = NULL;
-
 // Временная константа для удобства написания кода
 #define MAX_NAME_LEN 100
 
@@ -44,6 +42,8 @@ typedef struct
     char worker[MAX_NAME_LEN]; // Принял рабоник (Фамилия)
     struct LS* next; // Указатель на след. элемента 
 } LS;
+
+struct LS* Head = NULL;
 
 /* Работа с датой */
 time_t date_to_timestamp(char* date_str) {
@@ -246,50 +246,48 @@ void uniq(char* args)
     return;
 }
 
-void print_nodes(LS* node) // node -> указатель на первый э-нт ЛС
+void print_LS(LS* node) // node -> указатель на первый э-нт ЛС
 {
     if (node != NULL)
     {
         char comes[11];
         timestamp_to_date(node->comes, comes);
-        printf("%s\n", comes);
-        printf("%s\n", node->sender);
-        printf("%s\n", node->name);
-        printf("%d\n", node->weight);
-        printf("%d\n", node->count);
+        printf("comes=%s ", comes);
+        printf("sender=%s ", node->sender);
+        printf("name=%s ", node->name);
+        printf("weight=%d ", node->weight);
+        printf("count=%d ", node->count);
+        printf("images=");
         switch (node->images)
         {
         case fragile:
-            printf("fragile\n");
+            printf("fragile ");
             break;
         case toxic:
-            printf("toxic\n");
+            printf("toxic ");
             break;
         case perishable:
-            printf("perishable\n");
+            printf("perishable ");
             break;
         case acrid:
-            printf("acrid\n");
+            printf("acrid ");
             break;
         case inflammable:
-            printf("inflammable\n");
+            printf("inflammable ");
             break;
         case frozen:
-            printf("frozen\n");
+            printf("frozen ");
             break;
         }
-        printf("%s\n", node->worker);
-        printf("\\/\n\n");
+        printf("worker=%s", node->worker);
+        printf("\n");
     }
     else
     {
         return;
     }
-    print_nodes(node->next);
+    print_LS(node->next);
 }
-
-
-
 
 int main()
 {
@@ -307,6 +305,6 @@ int main()
         if (!strcmp(str, "uniq")) {     uniq(strtok(NULL, "\0")); }
     }
     // TODO work with terminal
-    print_nodes(Head);
+    print_LS(Head);
     return 1;
 }
