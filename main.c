@@ -6,6 +6,8 @@
 
 #pragma warning(disable : 4996)
 
+/* TODO по-хорошему надо тут объявить ВСЕ функции */
+
 // Временная константа для удобства написания кода
 #define MAX_NAME_LEN 100
 
@@ -33,7 +35,7 @@ enum Images str_to_image(char* str)
 // Реализация линейного списка
 typedef struct
 {
-    time_t comes; // DD.MM.YYYY - дата поступления - ОБЯЗАТЕЛЬНО TODO в UNIX-timestamp
+    time_t comes; // UNIX_timestamp's
     char sender[MAX_NAME_LEN]; // Грузоотправитель
     char name[MAX_NAME_LEN]; // Наименование товара
     int weight; // Вес
@@ -43,7 +45,702 @@ typedef struct
     struct LS* next; // Указатель на след. элемента 
 } LS;
 
-struct LS* Head = NULL;
+struct LS* Head;
+time_t date_to_timestamp(char* date_str);
+void print_node_fields(LS* node, char* fields);
+
+// передаёшь "сырое" ( field(op)value ) условие и голову списка, получаешь указатель на список указателей подходящих эл-ов
+LS** check_conditions(char* token, LS* head) 
+{
+    /*
+    Условия бывают:
+    > ; >= ; < ; <= ;
+    field/in/[' ',' ']
+    == ; !=
+    насчёт include - хз*
+    */
+    /* example
+    weight>84 images==frozen
+    */
+    char* ptr = token; // Указатель, который "ходит" по строке
+    char* field = token; // Тут содержится поле, которое нужно проверять
+    char* cond; // Это вообще не нужная переменная
+    char* value; // Тут значение для сравнения по условию (Короче всё, что после символов операции сравнения)
+    LS** values_to_return = (LS*)malloc(sizeof(LS*) * 100); // TODO Длину этого массива
+    int i = 0;
+    LS* copy_head;
+    for (ptr; *ptr != '\0'; ptr++) // Определяем тип операции поле, значение, условие
+    {
+        if (*ptr == '<')
+        {
+            field[ptr - field] = '\0';
+            if (*(ptr + 1) == '=')
+            {
+                value = ptr + 2;
+                if (strcmp(field, "comes") == 0)
+                {
+                    time_t new_value = date_to_timestamp(value);
+                    while (head != NULL)
+                    {
+                        if (new_value >= head->comes)
+                        {
+                            values_to_return[i] = head;
+                            i++;
+                        }
+                        head = head->next;
+                    }
+                }
+                if (strcmp(field, "sender") == 0)
+                {
+                    while (head != NULL)
+                    {
+                        if (value >= head->sender)
+                        {
+                            values_to_return[i] = head;
+                            i++;
+                        }
+                        head = head->next;
+                    }
+                }
+                if (strcmp(field, "name") == 0)
+                {
+                    while (head != NULL)
+                    {
+                        if (value >= head->name)
+                        {
+                            values_to_return[i] = head;
+                            i++;
+                        }
+                        head = head->next;
+                    }
+                }
+                if (strcmp(field, "weight") == 0)
+                {
+                    int new_value = atoi(value);
+                    while (head != NULL)
+                    {
+                        if (new_value >= head->weight)
+                        {
+                            values_to_return[i] = head;
+                            i++;
+                        }
+                        head = head->next;
+                    }
+                }
+                if (strcmp(field, "count") == 0)
+                {
+                    int new_value = atoi(value);
+                    while (head != NULL)
+                    {
+                        if (new_value >= head->count)
+                        {
+                            values_to_return[i] = head;
+                            i++;
+                        }
+                        head = head->next;
+                    }
+                }
+                if (strcmp(field, "images") == 0)
+                {
+                    while (head != NULL)
+                    {
+                        enum Images new_value = str_to_image(value);
+                        if (new_value >= head->images)
+                        {
+                            values_to_return[i] = head;
+                            i++;
+                        }
+                        head = head->next;
+                    }
+                }
+                if (strcmp(field, "worker") == 0)
+                {
+                    while (head != NULL)
+                    {
+                        if (value >= head->worker)
+                        {
+                            values_to_return[i] = head;
+                            i++;
+                        }
+                        head = head->next;
+                    }
+                }
+            }
+            else
+            {
+                value = ptr + 1;
+                if (strcmp(field, "comes") == 0)
+                {
+                    time_t new_value = date_to_timestamp(value);
+                    while (head != NULL)
+                    {
+                        if (new_value > head->comes)
+                        {
+                            values_to_return[i] = head;
+                            i++;
+                        }
+                        head = head->next;
+                    }
+                }
+                if (strcmp(field, "sender") == 0)
+                {
+                    while (head != NULL)
+                    {
+                        if (value > head->sender)
+                        {
+                            values_to_return[i] = head;
+                            i++;
+                        }
+                        head = head->next;
+                    }
+                }
+                if (strcmp(field, "name") == 0)
+                {
+                    while (head != NULL)
+                    {
+                        if (value > head->name)
+                        {
+                            values_to_return[i] = head;
+                            i++;
+                        }
+                        head = head->next;
+                    }
+                }
+                if (strcmp(field, "weight") == 0)
+                {
+                    int new_value = atoi(value);
+                    while (head != NULL)
+                    {
+                        if (new_value > head->weight)
+                        {
+                            values_to_return[i] = head;
+                            i++;
+                        }
+                        head = head->next;
+                    }
+                }
+                if (strcmp(field, "count") == 0)
+                {
+                    int new_value = atoi(value);
+                    while (head != NULL)
+                    {
+                        if (new_value > head->count)
+                        {
+                            values_to_return[i] = head;
+                            i++;
+                        }
+                        head = head->next;
+                    }
+                }
+                if (strcmp(field, "images") == 0)
+                {
+                    while (head != NULL)
+                    {
+                        enum Images new_value = str_to_image(value);
+                        if (new_value > head->images)
+                        {
+                            values_to_return[i] = head;
+                            i++;
+                        }
+                        head = head->next;
+                    }
+                }
+                if (strcmp(field, "worker") == 0)
+                {
+                    while (head != NULL)
+                    {
+                        if (value > head->worker)
+                        {
+                            values_to_return[i] = head;
+                            i++;
+                        }
+                        head = head->next;
+                    }
+                }
+            }
+        }
+        if (*ptr == '>')
+        {
+            field[ptr - field] = '\0';
+            if (*(ptr + 1) == '=')
+            {
+                value = ptr + 2;
+                if (strcmp(field, "comes") == 0)
+                {
+                    time_t new_value = date_to_timestamp(value);
+                    while (head != NULL)
+                    {
+                        if (new_value <= head->comes)
+                        {
+                            values_to_return[i] = head;
+                            i++;
+                        }
+                        head = head->next;
+                    }
+                }
+                if (strcmp(field, "sender") == 0)
+                {
+                    while (head != NULL)
+                    {
+                        if (value <= head->sender)
+                        {
+                            values_to_return[i] = head;
+                            i++;
+                        }
+                        head = head->next;
+                    }
+                }
+                if (strcmp(field, "name") == 0)
+                {
+                    while (head != NULL)
+                    {
+                        if (value <= head->name)
+                        {
+                            values_to_return[i] = head;
+                            i++;
+                        }
+                        head = head->next;
+                    }
+                }
+                if (strcmp(field, "weight") == 0)
+                {
+                    int new_value = atoi(value);
+                    while (head != NULL)
+                    {
+                        if (new_value <= head->weight)
+                        {
+                            values_to_return[i] = head;
+                            i++;
+                        }
+                        head = head->next;
+                    }
+                }
+                if (strcmp(field, "count") == 0)
+                {
+                    int new_value = atoi(value);
+                    while (head != NULL)
+                    {
+                        if (new_value <= head->count)
+                        {
+                            values_to_return[i] = head;
+                            i++;
+                        }
+                        head = head->next;
+                    }
+                }
+                if (strcmp(field, "images") == 0)
+                {
+                    while (head != NULL)
+                    {
+                        enum Images new_value = str_to_image(value);
+                        if (new_value <= head->images)
+                        {
+                            values_to_return[i] = head;
+                            i++;
+                        }
+                        head = head->next;
+                    }
+                }
+                if (strcmp(field, "worker") == 0)
+                {
+                    while (head != NULL)
+                    {
+                        if (value <= head->worker)
+                        {
+                            values_to_return[i] = head;
+                            i++;
+                        }
+                        head = head->next;
+                    }
+                }
+            }
+            else
+            {
+                value = ptr + 1;
+                if (strcmp(field, "comes") == 0)
+                {
+                    time_t new_value = date_to_timestamp(value);
+                    while (head != NULL)
+                    {
+                        if (new_value < head->comes)
+                        {
+                            values_to_return[i] = head;
+                            i++;
+                        }
+                        head = head->next;
+                    }
+                }
+                if (strcmp(field, "sender") == 0)
+                {
+                    while (head != NULL)
+                    {
+                        if (value < head->sender)
+                        {
+                            values_to_return[i] = head;
+                            i++;
+                        }
+                        head = head->next;
+                    }
+                }
+                if (strcmp(field, "name") == 0)
+                {
+                    while (head != NULL)
+                    {
+                        if (value < head->name)
+                        {
+                            values_to_return[i] = head;
+                            i++;
+                        }
+                        head = head->next;
+                    }
+                }
+                if (strcmp(field, "weight") == 0)
+                {
+                    int new_value = atoi(value);
+                    while (head != NULL)
+                    {
+                        if (new_value < head->weight)
+                        {
+                            values_to_return[i] = head;
+                            i++;
+                        }
+                        head = head->next;
+                    }
+                }
+                if (strcmp(field, "count") == 0)
+                {
+                    int new_value = atoi(value);
+                    while (head != NULL)
+                    {
+                        if (new_value < head->count)
+                        {
+                            values_to_return[i] = head;
+                            i++;
+                        }
+                        head = head->next;
+                    }
+                }
+                if (strcmp(field, "images") == 0)
+                {
+                    while (head != NULL)
+                    {
+                        enum Images new_value = str_to_image(value);
+                        if (new_value < head->images)
+                        {
+                            values_to_return[i] = head;
+                            i++;
+                        }
+                        head = head->next;
+                    }
+                }
+                if (strcmp(field, "worker") == 0)
+                {
+                    while (head != NULL)
+                    {
+                        if (value < head->worker)
+                        {
+                            values_to_return[i] = head;
+                            i++;
+                        }
+                        head = head->next;
+                    }
+                }
+            }
+        }
+        if (*ptr == '=' && *(ptr + 1) == '=')
+        {
+            field[ptr - field] = '\0';
+            value = ptr + 2;
+            if (strcmp(field, "comes") == 0)
+            {
+                time_t new_value = date_to_timestamp(value);
+                while (head != NULL)
+                {
+                    if (new_value == head->comes)
+                    {
+                        values_to_return[i] = head;
+                        i++;
+                    }
+                    head = head->next;
+                }
+            }
+            if (strcmp(field, "sender") == 0)
+            {
+                while (head != NULL)
+                {
+                    if (strcmp(value, head->sender) == 0)
+                    {
+                        values_to_return[i] = head;
+                        i++;
+                    }
+                    head = head->next;
+                }
+            }
+            if (strcmp(field, "name") == 0)
+            {
+                while (head != NULL)
+                {
+                    if (strcmp(value, head->name) == 0)
+                    {
+                        values_to_return[i] = head;
+                        i++;
+                    }
+                    head = head->next;
+                }
+            }
+            if (strcmp(field, "weight") == 0)
+            {
+                int new_value = atoi(value);
+                while (head != NULL)
+                {
+                    if (new_value == head->weight)
+                    {
+                        values_to_return[i] = head;
+                        i++;
+                    }
+                    head = head->next;
+                }
+            }
+            if (strcmp(field, "count") == 0)
+            {
+                int new_value = atoi(value);
+                while (head != NULL)
+                {
+                    if (new_value == head->count)
+                    {
+                        values_to_return[i] = head;
+                        i++;
+                    }
+                    head = head->next;
+                }
+            }
+            if (strcmp(field, "images") == 0)
+            {
+                while (head != NULL)
+                {
+                    enum Images new_value = str_to_image(value);
+                    if (new_value == head->images)
+                    {
+                        values_to_return[i] = head;
+                        i++;
+                    }
+                    head = head->next;
+                }
+            }
+            if (strcmp(field, "worker") == 0)
+            {
+                while (head != NULL)
+                {
+                    if (strcmp(value, head->worker) == 0)
+                    {
+                        values_to_return[i] = head;
+                        i++;
+                    }
+                    head = head->next;
+                }
+            }
+        }
+        if (*ptr == '!' && *(ptr + 1) == '=')
+        {
+            field[ptr - field] = '\0';
+            value = ptr + 2;
+            if (strcmp(field, "comes") == 0)
+            {
+                time_t new_value = date_to_timestamp(value);
+                while (head != NULL)
+                {
+                    if (new_value != head->comes)
+                    {
+                        values_to_return[i] = head;
+                        i++;
+                    }
+                    head = head->next;
+                }
+            }
+            if (strcmp(field, "sender") == 0)
+            {
+                while (head != NULL)
+                {
+                    if (strcmp(value, head->sender) != 0)
+                    {
+                        values_to_return[i] = head;
+                        i++;
+                    }
+                    head = head->next;
+                }
+            }
+            if (strcmp(field, "name") == 0)
+            {
+                while (head != NULL)
+                {
+                    if (strcmp(value, head->name) != 0)
+                    {
+                        values_to_return[i] = head;
+                        i++;
+                    }
+                    head = head->next;
+                }
+            }
+            if (strcmp(field, "weight") == 0)
+            {
+                int new_value = atoi(value);
+                while (head != NULL)
+                {
+                    if (new_value != head->weight)
+                    {
+                        values_to_return[i] = head;
+                        i++;
+                    }
+                    head = head->next;
+                }
+            }
+            if (strcmp(field, "count") == 0)
+            {
+                int new_value = atoi(value);
+                while (head != NULL)
+                {
+                    if (new_value != head->count)
+                    {
+                        values_to_return[i] = head;
+                        i++;
+                    }
+                    head = head->next;
+                }
+            }
+            if (strcmp(field, "images") == 0)
+            {
+                while (head != NULL)
+                {
+                    enum Images new_value = str_to_image(value);
+                    if (new_value != head->images)
+                    {
+                        values_to_return[i] = head;
+                        i++;
+                    }
+                    head = head->next;
+                }
+            }
+            if (strcmp(field, "worker") == 0)
+            {
+                while (head != NULL)
+                {
+                    if (strcmp(value, head->worker) != 0)
+                    {
+                        values_to_return[i] = head;
+                        i++;
+                    }
+                    head = head->next;
+                }
+            }
+        }
+        if (*ptr == '/' && *(ptr + 1) == 'i' && *(ptr + 2) == 'n') 
+        {
+            field[ptr - field] = '\0';
+            value = ptr + 5; 
+            value[strlen(value) - 1] = '\0'; // value: 'arg1','arg2',...
+            char* arg = strtok(value, ",");
+            copy_head = head;
+            while (arg != NULL)
+            {
+                arg++;
+                arg[strlen(arg) - 1] = '\0'; // Вот отсюда arg имеет нормальный вид
+                if (strcmp(field, "comes") == 0)
+                {
+                    time_t new_value = date_to_timestamp(arg);
+                    while (copy_head != NULL)
+                    {
+                        if (new_value == copy_head->comes)
+                        {
+                            values_to_return[i] = copy_head;
+                            i++;
+                        }
+                        copy_head = copy_head->next;
+                    }
+                }
+                if (strcmp(field, "sender") == 0)
+                {
+                    while (copy_head != NULL)
+                    {
+                        if (strcmp(arg, copy_head->sender) == 0)
+                        {
+                            values_to_return[i] = copy_head;
+                            i++;
+                        }
+                        copy_head = copy_head->next;
+                    }
+                }
+                if (strcmp(field, "name") == 0)
+                {
+                    while (copy_head != NULL)
+                    {
+                        if (strcmp(arg, copy_head->name) == 0)
+                        {
+                            values_to_return[i] = copy_head;
+                            i++;
+                        }
+                        copy_head = copy_head->next;
+                    }
+                }
+                if (strcmp(field, "weight") == 0)
+                {
+                    int new_value = atoi(arg);
+                    while (copy_head != NULL)
+                    {
+                        if (new_value == copy_head->weight)
+                        {
+                            values_to_return[i] = copy_head;
+                            i++;
+                        }
+                        copy_head = copy_head->next;
+                    }
+                }
+                if (strcmp(field, "count") == 0)
+                {
+                    int new_value = atoi(arg);
+                    while (copy_head != NULL)
+                    {
+                        if (new_value == copy_head->count)
+                        {
+                            values_to_return[i] = copy_head;
+                            i++;
+                        }
+                        copy_head = copy_head->next;
+                    }
+                }
+                if (strcmp(field, "images") == 0)
+                {
+                    while (copy_head != NULL)
+                    {
+                        enum Images new_value = str_to_image(arg);
+                        if (new_value == copy_head->images)
+                        {
+                            values_to_return[i] = copy_head;
+                            i++;
+                        }
+                        copy_head = copy_head->next;
+                    }
+                }
+                if (strcmp(field, "worker") == 0)
+                {
+                    while (copy_head != NULL)
+                    {
+                        if (strcmp(arg, copy_head->worker) == 0)
+                        {
+                            values_to_return[i] = copy_head;
+                            i++;
+                        }
+                        copy_head = copy_head->next;
+                    }
+                }
+                copy_head = head;
+                arg = strtok(NULL, ",");
+            }  
+        }
+    }
+    values_to_return[i] = NULL;
+    return values_to_return;
+}
+
 
 /* Работа с датой */
 time_t date_to_timestamp(char* date_str) {
@@ -114,27 +811,6 @@ void add_node(time_t comes, char* sender, char* name, \
     last->next = new_node;
 }
 
-/*
-void add_node(LS* node, char comes[11], char sender[MAX_NAME_LEN], char name[MAX_NAME_LEN], \
-    int weight, int count, enum Images images, char worker[MAX_NAME_LEN]) // Добавить элемент в ЛС node - укаель на последний э-нт
-{
-    if (node == NULL) // Создаём корневой узел
-    {
-        LS* new_node = (LS*)malloc(sizeof(LS));
-        FILL(new_node, comes, sender, name, weight, count, images, worker);
-        new_node->next = NULL;
-    }
-    else // Добавляем элемент
-    {
-        LS* new_node = (LS*)malloc(sizeof(LS));
-        FILL(new_node, comes, sender, name, weight, count, images, worker);
-
-        new_node->next = node->next;
-        node->next = new_node;
-    }
-}
-*/
-
 void del_node(LS* node_to_del) // Удалить элемент из ЛС node - указатель на удаляемый э-нт
 {
     // Если удаляемый узел — голова списка
@@ -162,10 +838,23 @@ void del_node(LS* node_to_del) // Удалить элемент из ЛС node -
     return;
 }
 
+
 /* Команды к БД */
 
 void select(char* args)
 {
+    char* token = strtok(args, " ");
+    char* fields_out = token; // В сохранили поля для вывода - обработаем их позже
+    token = strtok(NULL, " "); // Теперь в token будут перебираться условия 
+    while (token != NULL) // token: field(op)value
+    {
+        LS** list = check_conditions(token, Head);
+        for (int i = 0; *(list+i) != NULL; i++)
+        {
+            print_node_fields(list[i], fields_out); // TODO Выводить только конкретные поля fields_out
+        }
+        token = strtok(NULL, " ");
+    }
     return;
 }
 
@@ -192,7 +881,10 @@ void insert(char* args)
         size_t key_len = equal_pos - field;
         field[key_len] = '\0';
         char* value = equal_pos + 1;
-
+        if (value[strlen(value) - 1] == '\n') // проверка для нормального вывода в будущем
+        {
+            value[strlen(value) - 1] = '\0';
+        }
         if (strcmp(field, "comes") == 0 && was_comes == 1) { printf("input error"); return; }
         if (strcmp(field, "comes") == 0 && was_comes == 0) { comes = date_to_timestamp(value); was_comes = 1; }
 
@@ -289,6 +981,67 @@ void print_LS(LS* node) // node -> указатель на первый э-нт 
     print_LS(node->next);
 }
 
+void print_node_fields(LS* node, char* fields) // node - Указаель на выводимый элемент fields - поля для вывода через запятую
+{
+    char* field = strtok(fields, ",");
+    while (field != NULL)
+    {
+        if (strcmp(field, "comes") == 0)
+        {
+            char comes[11];
+            timestamp_to_date(node->comes, comes);
+            printf("comes=%s ", comes);
+        }
+        if (strcmp(field, "sender") == 0)
+        {
+            printf("sender=%s ", node->sender);
+        }
+        if (strcmp(field, "name") == 0)
+        {
+            printf("name=%s ", node->name);
+        }
+        if (strcmp(field, "weight") == 0)
+        {
+            printf("weight=%d ", node->weight);
+        }
+        if (strcmp(field, "count") == 0)
+        {
+            printf("count=%d ", node->count);
+        }
+        if (strcmp(field, "images") == 0)
+        {
+            printf("images=");
+            switch (node->images)
+            {
+            case fragile:
+                printf("fragile ");
+                break;
+            case toxic:
+                printf("toxic ");
+                break;
+            case perishable:
+                printf("perishable ");
+                break;
+            case acrid:
+                printf("acrid ");
+                break;
+            case inflammable:
+                printf("inflammable ");
+                break;
+            case frozen:
+                printf("frozen ");
+                break;
+            }
+        }
+        if (strcmp(field, "worker") == 0)
+        {
+            printf("worker=%s ", node->worker);
+        }
+        field = strtok(NULL, ",");
+    }
+    printf("\n");
+}
+
 int main()
 {
     setlocale(LC_ALL, "rus");
@@ -305,6 +1058,6 @@ int main()
         if (!strcmp(str, "uniq")) {     uniq(strtok(NULL, "\0")); }
     }
     // TODO work with terminal
-    print_LS(Head);
+    //print_LS(Head);
     return 1;
 }
