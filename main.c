@@ -89,42 +89,42 @@ FILE* out;
 
 char** split(char* str, char delim, int* count) 
 {
-    //if (!str || !count) return NULL;
-
-    // Создаем копию строки для безопасной работы
     char* str_copy = strdup(str);
     if (!str_copy) return NULL;
 
-    // Первый проход: подсчет количества токенов
+    // Сначала посчитаем токены
     *count = 1;
-    for (const char* p = str; *p; p++) {
+    for (const char* p = str; *p; p++) 
+    {
         if (*p == delim || *p == '\0' || *p == '\n') (*count)++;
     }
 
-    // Выделяем память под массив указателей + 1 для NULL в конце
+    // + 1 для NULL в конце
     char** tokens = malloc((*count + 1) * sizeof(char*));
     malloc_count++;
-    if (!tokens) {
+    if (!tokens) 
+    {
         free(str_copy);
         free_count++;
         return NULL;
     }
 
-    // Второй проход: заполнение массива токенами
     int i = 0;
     char* token = str_copy;
     char* end = str_copy;
 
-    while (*end) {
-        if (*end == delim || *end == '\0' || *end == '\n') {
-            *end = '\0';  // Заменяем разделитель на терминатор
+    while (*end) 
+    {
+        if (*end == delim || *end == '\0' || *end == '\n') 
+        {
+            *end = '\0';  
             tokens[i++] = token;
             token = end + 1;
         }
         end++;
     }
-    tokens[i++] = token;  // Последний токен
-    tokens[i] = NULL;     // Маркер конца массива
+    tokens[i++] = token;  
+    tokens[i] = NULL;     
 
     *count = i - 1;  // Корректируем count (без учета NULL)
     return tokens;
@@ -132,38 +132,40 @@ char** split(char* str, char delim, int* count)
 
 LS** AND(LS** list1, LS** list2)
 {
-    // Выделяем память с обнулением (calloc)
     LS** final_list = (LS**)calloc(100, sizeof(LS*));
     calloc_count++;
-    if (!final_list) {
-        return NULL; // Ошибка выделения памяти
+    if (!final_list) 
+    {
+        return NULL; 
     }
 
     // Проверка на пустые списки
-    if (*list1 == NULL || *list2 == NULL) {
-        free(final_list); // Освобождаем память перед возвратом
+    if (*list1 == NULL || *list2 == NULL) 
+    {
+        free(final_list);
         free_count++;
         return NULL;
     }
 
     int i = 0;
-    // Проход по первому списку
-    for (int ptr1 = 0; list1[ptr1] != NULL; ptr1++) {
-        // Проход по второму списку
-        for (int ptr2 = 0; list2[ptr2] != NULL; ptr2++) {
-            // Найдено совпадение
-            if (list1[ptr1] == list2[ptr2]) {
-                // Проверка на дубликаты в результирующем списке
+    for (int ptr1 = 0; list1[ptr1] != NULL; ptr1++) 
+    {
+        for (int ptr2 = 0; list2[ptr2] != NULL; ptr2++) 
+        {
+            if (list1[ptr1] == list2[ptr2]) 
+            {
                 int is_duplicate = 0;
-                for (int j = 0; j < i; j++) {
-                    if (final_list[j] == list1[ptr1]) {
+                for (int j = 0; j < i; j++) 
+                {
+                    if (final_list[j] == list1[ptr1]) 
+                    {
                         is_duplicate = 1;
                         break;
                     }
                 }
 
-                // Добавляем элемент, если не дубликат и есть место
-                if (!is_duplicate && i < 99) {
+                if (!is_duplicate && i < 99) 
+                {
                     final_list[i++] = list1[ptr1];
                 }
                 break; // Прерываем внутренний цикл после нахождения совпадения
@@ -171,7 +173,7 @@ LS** AND(LS** list1, LS** list2)
         }
     }
 
-    final_list[i] = NULL; // NULL-terminated массив
+    final_list[i] = NULL; 
     return final_list;
 }
 
@@ -871,16 +873,15 @@ LS** check_conditions(char* token, LS* head)
 
 /* Работа с датой */
 
-time_t date_to_timestamp(char* date_str) {
-    struct tm tm = { 0 }; // Инициализируем структуру нулями
+time_t date_to_timestamp(char* date_str) 
+{
+    struct tm tm = { 0 };
     time_t timestamp;
-
-    // Разбираем строку в формате DD.MM.YYYY
-    if (sscanf(date_str, "%d.%d.%d", &tm.tm_mday, &tm.tm_mon, &tm.tm_year) != 3) {
+    if (sscanf(date_str, "%d.%d.%d", &tm.tm_mday, &tm.tm_mon, &tm.tm_year) != 3) 
+    {
         return -1; // Ошибка формата
     }
 
-    // Корректировка полей структуры tm
     tm.tm_mon -= 1;    // Месяцы в struct tm: 0-11
     tm.tm_year -= 1900; // Год в struct tm: с 1900
 
@@ -890,8 +891,10 @@ time_t date_to_timestamp(char* date_str) {
     return timestamp;
 }
 
-void timestamp_to_date(time_t timestamp, char* output) {
+void timestamp_to_date(time_t timestamp, char* output) 
+{
     struct tm* tm_info = localtime(&timestamp);
+    if (timestamp == -1) { return; }
     snprintf(output, 11, "%02d.%02d.%04d",
         tm_info->tm_mday,
         tm_info->tm_mon + 1,  // +1, т.к. месяцы 0-11
@@ -901,10 +904,12 @@ void timestamp_to_date(time_t timestamp, char* output) {
 /* Взаимодействие с LS */
 
 LS* create_node(time_t comes, char* sender, char* name, \
-    int weight, int count, enum Images images, char* worker) {
+    int weight, int count, enum Images images, char* worker) 
+{
     LS* new_node = (LS*)malloc(sizeof(LS));
     malloc_count++;
-    if (new_node == NULL) {
+    if (new_node == NULL) 
+    {
         printf("Ошибка выделения памяти!\n");
         exit(1);
     }
@@ -921,17 +926,20 @@ LS* create_node(time_t comes, char* sender, char* name, \
 }
 
 void add_node(time_t comes, char* sender, char* name, \
-    int weight, int count, enum Images images, char worker[MAX_NAME_LEN]) {
+    int weight, int count, enum Images images, char worker[MAX_NAME_LEN]) 
+{
 
     LS* new_node = create_node(comes, sender, name, weight, count, images, worker);
 
-    if (Head == NULL) {
+    if (Head == NULL) 
+    {
         Head = new_node;
         return;
     }
 
     LS* last = Head;
-    while (last->next != NULL) {
+    while (last->next != NULL) 
+    {
         last = last->next;
     }
 
@@ -949,7 +957,7 @@ void del_node(LS* node_to_del) // Удалить элемент из ЛС node -
         return;
     }
 
-    // Ищем предыдущий узел перед nodeToDelete
+    // Ищем предыдущий узел перед node_to_del
     LS* current = Head;
     while (current != NULL && current->next != node_to_del) 
     {
