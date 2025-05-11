@@ -6,11 +6,10 @@
 
 #pragma warning(disable : 4996)
 
-/* TODO по-хорошему надо тут объявить ВСЕ функции */
-
-// Временная константа для удобства написания кода
 #define MAX_NAME_LEN 100
 
+
+/*** Структуры и перечислеия ***/
 typedef enum Images 
 { 
     fragile, 
@@ -32,7 +31,7 @@ enum Images str_to_image(char* str)
     if (strcmp(str, "frozen") == 0) { return frozen; }
     return UNKNOWN;
 }
-// Реализация линейного списка
+
 typedef struct
 {
     time_t comes; // UNIX_timestamp's
@@ -44,12 +43,125 @@ typedef struct
     char worker[MAX_NAME_LEN]; // Принял рабоник (Фамилия)
     struct LS* next; // Указатель на след. элемента 
 } LS;
-
 struct LS* Head;
+
+
+/*** Функции и процедуры ***/
+
+
+/** Обяъвние **/
+
+char** split(char* str, char delim, int* count);
+LS** AND(LS** list1, LS** list2);
+LS** check_conditions(char* token, LS* Head); // передаёшь "сырое" ( field(op)value ) условие и голову списка, получаешь указатель на список указателей подходящих эл-ов
+void upd_node(LS* node, char* update_field);
+/* Работа с датой */
 time_t date_to_timestamp(char* date_str);
+void timestamp_to_date(time_t timestamp, char* output);
+/* Взаимодействие с LS */
+LS* create_node(time_t comes, char* sender, char* name, int weight, int count, enum Images images, char* worker); // Вспомогательная штука - создаёт node и возращает указатель на него
+void add_node(time_t comes, char* sender, char* name, int weight, int count, enum Images images, char worker[MAX_NAME_LEN]); // Через эту функцию добавляем nod'ы
+void del_node(LS* node_to_del);
+/* Команды к БД */
+void insert(char* args);
+void select(char* args);
+void delete(char* args);
+void update(char* args);
+void uniq(char* args);
+/* print'ы */
+void print_LS(LS* node);
 void print_node_fields(LS* node, char* fields);
 
-// передаёшь "сырое" ( field(op)value ) условие и голову списка, получаешь указатель на список указателей подходящих эл-ов
+
+/** Реализация **/
+
+
+/* Проверка условий и вспомогательные штуки */
+
+char** split(char* str, char delim, int* count) 
+{
+    //if (!str || !count) return NULL;
+
+    // Создаем копию строки для безопасной работы
+    char* str_copy = strdup(str);
+    if (!str_copy) return NULL;
+
+    // Первый проход: подсчет количества токенов
+    *count = 1;
+    for (const char* p = str; *p; p++) {
+        if (*p == delim || *p == '\0' || *p == '\n') (*count)++;
+    }
+
+    // Выделяем память под массив указателей + 1 для NULL в конце
+    char** tokens = malloc((*count + 1) * sizeof(char*));
+    if (!tokens) {
+        free(str_copy);
+        return NULL;
+    }
+
+    // Второй проход: заполнение массива токенами
+    int i = 0;
+    char* token = str_copy;
+    char* end = str_copy;
+
+    while (*end) {
+        if (*end == delim || *end == '\0' || *end == '\n') {
+            *end = '\0';  // Заменяем разделитель на терминатор
+            tokens[i++] = token;
+            token = end + 1;
+        }
+        end++;
+    }
+    tokens[i++] = token;  // Последний токен
+    tokens[i] = NULL;     // Маркер конца массива
+
+    *count = i - 1;  // Корректируем count (без учета NULL)
+    return tokens;
+}
+
+LS** AND(LS** list1, LS** list2)
+{
+    // Выделяем память с обнулением (calloc)
+    LS** final_list = (LS**)calloc(100, sizeof(LS*));
+    if (!final_list) {
+        return NULL; // Ошибка выделения памяти
+    }
+
+    // Проверка на пустые списки
+    if (*list1 == NULL || *list2 == NULL) {
+        free(final_list); // Освобождаем память перед возвратом
+        return NULL;
+    }
+
+    int i = 0;
+    // Проход по первому списку
+    for (int ptr1 = 0; list1[ptr1] != NULL; ptr1++) {
+        // Проход по второму списку
+        for (int ptr2 = 0; list2[ptr2] != NULL; ptr2++) {
+            // Найдено совпадение
+            if (list1[ptr1] == list2[ptr2]) {
+                // Проверка на дубликаты в результирующем списке
+                int is_duplicate = 0;
+                for (int j = 0; j < i; j++) {
+                    if (final_list[j] == list1[ptr1]) {
+                        is_duplicate = 1;
+                        break;
+                    }
+                }
+
+                // Добавляем элемент, если не дубликат и есть место
+                if (!is_duplicate && i < 99) {
+                    final_list[i++] = list1[ptr1];
+                }
+                break; // Прерываем внутренний цикл после нахождения совпадения
+            }
+        }
+    }
+
+    final_list[i] = NULL; // NULL-terminated массив
+    return final_list;
+}
+
 LS** check_conditions(char* token, LS* head) 
 {
     /*
@@ -63,7 +175,9 @@ LS** check_conditions(char* token, LS* head)
     weight>84 images==frozen
     */
     char* ptr = token; // Указатель, который "ходит" по строке
-    char* field = token; // Тут содержится поле, которое нужно проверять
+    char Field[1000]; // Тут содержится поле, которое нужно проверять
+    strcpy(&Field, token);
+    char* field = &Field;
     char* cond; // Это вообще не нужная переменная
     char* value; // Тут значение для сравнения по условию (Короче всё, что после символов операции сравнения)
     LS** values_to_return = (LS*)malloc(sizeof(LS*) * 100); // TODO Длину этого массива
@@ -73,7 +187,7 @@ LS** check_conditions(char* token, LS* head)
     {
         if (*ptr == '<')
         {
-            field[ptr - field] = '\0';
+            field[ptr - token] = '\0';
             if (*(ptr + 1) == '=')
             {
                 value = ptr + 2;
@@ -261,7 +375,7 @@ LS** check_conditions(char* token, LS* head)
         }
         if (*ptr == '>')
         {
-            field[ptr - field] = '\0';
+            field[ptr - token] = '\0';
             if (*(ptr + 1) == '=')
             {
                 value = ptr + 2;
@@ -449,7 +563,7 @@ LS** check_conditions(char* token, LS* head)
         }
         if (*ptr == '=' && *(ptr + 1) == '=')
         {
-            field[ptr - field] = '\0';
+            field[ptr - token] = '\0';
             value = ptr + 2;
             if (strcmp(field, "comes") == 0)
             {
@@ -542,7 +656,7 @@ LS** check_conditions(char* token, LS* head)
         }
         if (*ptr == '!' && *(ptr + 1) == '=')
         {
-            field[ptr - field] = '\0';
+            field[ptr - token] = '\0';
             value = ptr + 2;
             if (strcmp(field, "comes") == 0)
             {
@@ -635,7 +749,7 @@ LS** check_conditions(char* token, LS* head)
         }
         if (*ptr == '/' && *(ptr + 1) == 'i' && *(ptr + 2) == 'n') 
         {
-            field[ptr - field] = '\0';
+            field[ptr - token] = '\0';
             value = ptr + 5; 
             value[strlen(value) - 1] = '\0'; // value: 'arg1','arg2',...
             char* arg = strtok(value, ",");
@@ -741,8 +855,8 @@ LS** check_conditions(char* token, LS* head)
     return values_to_return;
 }
 
-
 /* Работа с датой */
+
 time_t date_to_timestamp(char* date_str) {
     struct tm tm = { 0 }; // Инициализируем структуру нулями
     time_t timestamp;
@@ -770,9 +884,8 @@ void timestamp_to_date(time_t timestamp, char* output) {
         tm_info->tm_year + 1900); // +1900, т.к. год отсчитывается с 1900
 }
 
-/* Взаимодействие с линейным списком */
+/* Взаимодействие с LS */
 
-// Вспомогательная штука - создаёт node и возращает указатель на него
 LS* create_node(time_t comes, char* sender, char* name, \
     int weight, int count, enum Images images, char* worker) {
     LS* new_node = (LS*)malloc(sizeof(LS));
@@ -792,7 +905,6 @@ LS* create_node(time_t comes, char* sender, char* name, \
     return new_node;
 }
 
-// Вот через это добавляем ноды
 void add_node(time_t comes, char* sender, char* name, \
     int weight, int count, enum Images images, char worker[MAX_NAME_LEN]) {
 
@@ -838,28 +950,110 @@ void del_node(LS* node_to_del) // Удалить элемент из ЛС node -
     return;
 }
 
-
+void upd_node(LS* node, char* update_fields)
+{
+    int count = 0;
+    char** tokens = split(update_fields, ',', &count);
+    for (int i = 0; i <= count; i++) // tokens[i]: field=update
+    {
+        char* str = strdup(tokens[i]);
+        int j = 0;
+        char** string = split(str, '=', &j);
+        char* field = string[0];
+        char* value = string[1];
+        if (strcmp(field, "comes") == 0)
+        {
+            node->comes = date_to_timestamp(value);
+        }
+        if (strcmp(field, "sender") == 0)
+        {
+            strcpy(node->sender, value);
+        }
+        if (strcmp(field, "name") == 0)
+        {
+            strcpy(node->name, value);
+        }
+        if (strcmp(field, "weight") == 0)
+        {
+            node->weight = (int)value;
+        }
+        if (strcmp(field, "count") == 0)
+        {
+            node->count = (int)value;
+        }
+        if (strcmp(field, "images") == 0)
+        {
+            node->images = str_to_image(value);
+        }
+        if (strcmp(field, "worker") == 0)
+        {
+            strcpy(node->worker, value);
+        }
+    }
+    return;
+}
 /* Команды к БД */
 
-void select(char* args)
+void select(char* args) // TODO Переписать strtok на что-то адекватное, а то не работает ни ку я
 {
-    char* token = strtok(args, " ");
-    char* fields_out = token; // В сохранили поля для вывода - обработаем их позже
-    token = strtok(NULL, " "); // Теперь в token будут перебираться условия 
-    while (token != NULL) // token: field(op)value
+    int count = 0;
+    char** tokens = split(args, ' ', &count);
+    char* fields_out = tokens[0];
+    char* token = tokens[1]; // token: field(op)value
+    LS** list = check_conditions(token, Head);
+    if (count == 2) // Если всего одно условие - выводим все подошедшие записи
     {
-        LS** list = check_conditions(token, Head);
-        for (int i = 0; *(list+i) != NULL; i++)
+        for (int i = 0; *(list + i) != NULL; i++)
         {
-            print_node_fields(list[i], fields_out); // TODO Выводить только конкретные поля fields_out
+            print_node_fields(list[i], fields_out);
         }
-        token = strtok(NULL, " ");
+    }
+    else
+    {
+        for (int i = 2; i < count; i++) 
+        {
+            list = AND(list, check_conditions(tokens[i], Head));
+        }
+        if (list == NULL)
+        {
+            return;
+        }
+        for (int i = 0; *(list + i) != NULL; i++)
+        {
+            print_node_fields(list[i], fields_out);
+        }
     }
     return;
 }
 
 void delete(char* args)
 {
+    int count = 0;
+    char** tokens = split(args, ' ', &count);
+    LS** list = check_conditions(tokens[0], Head);
+    if (count == 1)
+    {
+        for (int i = 0; *(list + i) != NULL; i++)
+        {
+            del_node(list[i]);
+        }
+
+    }
+    else
+    {
+        for (int i = 1; i < count; i++)
+        {
+            list = AND(list, check_conditions(tokens[i], Head));
+        }
+        if (list == NULL)
+        {
+            return;
+        }
+        for (int i = 0; *(list + i) != NULL; i++)
+        {
+            del_node(list[i]);
+        }
+    }
     return;
 }
 
@@ -930,14 +1124,140 @@ void insert(char* args)
 
 void update(char* args)
 {
+    int count = 0;
+    char** tokens = split(args, ' ', &count);
+    LS** list = check_conditions(tokens[1], Head);
+    if (count == 1) // В случае, если не указаны условия - меняем всё
+    {
+        LS* node = Head;
+        while (node != NULL)
+        {
+            upd_node(node, tokens[0]);
+            node = node->next;
+        }
+    }
+    if (count == 2)
+    {
+        for (int i = 0; *(list + i) != NULL; i++)
+        {
+            upd_node(list[i], tokens[0]);
+        }
+
+    }
+    else
+    {
+        for (int i = 2; i < count; i++)
+        {
+            list = AND(list, check_conditions(tokens[i], Head));
+        }
+        if (list == NULL)
+        {
+            return;
+        }
+        for (int i = 0; *(list + i) != NULL; i++)
+        {
+            upd_node(list[i], tokens[0]);
+        }
+    }
     return;
 }
 
-void uniq(char* args)
-{
-    return;
+void uniq(char* args) {
+    if (Head == NULL) {
+        return;
+    }
+
+    LS* current = Head;
+    LS* previous = NULL;
+    int count = 0;
+    char** fields = split(args, ',', &count);
+    while (current != NULL) 
+    {
+        LS* runner = Head;
+        int is_equale = 0;
+        
+        // Проверяем, есть ли дубликат перед текущим узлом
+        while (runner != current) 
+        {
+            for (int i = 0; i < count; i++)
+            {
+                if (strcmp(fields[i], "comes") == 0)
+                {
+                    if (current->comes == runner->comes)
+                    {
+                        is_equale = 1;
+                    }
+                }
+                if (strcmp(fields[i], "sender") == 0)
+                {
+                    if (strcmp(current->sender, runner->sender) == 0)
+                    {
+                        is_equale = 1;
+                    }
+                }
+                if (strcmp(fields[i], "name") == 0)
+                {
+                    if (strcmp(current->name, runner->name) == 0)
+                    {
+                        is_equale = 1;
+                    }
+                }
+                if (strcmp(fields[i], "weight") == 0)
+                {
+                    if (current->weight == runner->weight)
+                    {
+                        is_equale = 1;
+                    }
+                }
+                if (strcmp(fields[i], "count") == 0)
+                {
+                    if (current->count == runner->count)
+                    {
+                        is_equale = 1;
+                    }
+                }
+                if (strcmp(fields[i], "images") == 0)
+                {
+                    if (current->images == runner->images)
+                    {
+                        is_equale = 1;
+                    }
+                }
+                if (strcmp(fields[i], "worker") == 0)
+                {
+                    if (strcmp(current->worker, runner->worker) == 0)
+                    {
+                        is_equale = 0;
+                    }
+                }
+            }
+            if (is_equale == 1)
+            {
+                break;
+            }
+            runner = runner->next;
+        }
+
+        if (is_equale) {
+            LS* to_delete = current;
+            if (previous != NULL) {
+                previous->next = current->next;
+            }
+            else {
+                Head = current->next; //
+            }
+            current = current->next;
+            free(to_delete);
+        }
+        else {
+            previous = current;
+            current = current->next;
+        }
+    }
 }
 
+
+/* print'ы */
 void print_LS(LS* node) // node -> указатель на первый э-нт ЛС
 {
     if (node != NULL)
@@ -981,8 +1301,9 @@ void print_LS(LS* node) // node -> указатель на первый э-нт 
     print_LS(node->next);
 }
 
-void print_node_fields(LS* node, char* fields) // node - Указаель на выводимый элемент fields - поля для вывода через запятую
+void print_node_fields(LS* node, char* Fields) // node - Указаель на выводимый элемент fields - поля для вывода через запятую
 {
+    char* fields = strdup(Fields);
     char* field = strtok(fields, ",");
     while (field != NULL)
     {
@@ -1056,6 +1377,8 @@ int main()
         if (!strcmp(str, "delete")) { delete(strtok(NULL, "\0")); }
         if (!strcmp(str, "update")) { update(strtok(NULL, "\0")); }
         if (!strcmp(str, "uniq")) {     uniq(strtok(NULL, "\0")); }
+
+        if (!strcmp(str, "print")) {print_LS(Head); }
     }
     // TODO work with terminal
     //print_LS(Head);
