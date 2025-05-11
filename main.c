@@ -51,10 +51,10 @@ struct LS* Head;
 
 /** Обяъвние **/
 
-char** split(char* str, char delim, int* count);
-LS** AND(LS** list1, LS** list2);
+char** split(char* str, char delim, int* count); // Разделяет строку str, по символу delim + считает сколко разделителей было в count
+LS** AND(LS** list1, LS** list2); // Ищет пересечение двух списков LS**
 LS** check_conditions(char* token, LS* Head); // передаёшь "сырое" ( field(op)value ) условие и голову списка, получаешь указатель на список указателей подходящих эл-ов
-void upd_node(LS* node, char* update_field);
+void upd_node(LS* node, char* update_field); // Обнавляет значения в nod'e, update_fields: field1=value1,field2=value2...
 /* Работа с датой */
 time_t date_to_timestamp(char* date_str);
 void timestamp_to_date(time_t timestamp, char* output);
@@ -72,6 +72,15 @@ void uniq(char* args);
 void print_LS(LS* node);
 void print_node_fields(LS* node, char* fields);
 
+/* Оставшиеся полезные и вспомогательные штуки */
+int malloc_count = 0;
+int realloc_count = 0;
+int calloc_count = 0;
+int free_count = 0;
+
+int records_count = 0; // Количество записей в бд
+
+FILE* out;
 
 /** Реализация **/
 
@@ -94,8 +103,10 @@ char** split(char* str, char delim, int* count)
 
     // Выделяем память под массив указателей + 1 для NULL в конце
     char** tokens = malloc((*count + 1) * sizeof(char*));
+    malloc_count++;
     if (!tokens) {
         free(str_copy);
+        free_count++;
         return NULL;
     }
 
@@ -123,6 +134,7 @@ LS** AND(LS** list1, LS** list2)
 {
     // Выделяем память с обнулением (calloc)
     LS** final_list = (LS**)calloc(100, sizeof(LS*));
+    calloc_count++;
     if (!final_list) {
         return NULL; // Ошибка выделения памяти
     }
@@ -130,6 +142,7 @@ LS** AND(LS** list1, LS** list2)
     // Проверка на пустые списки
     if (*list1 == NULL || *list2 == NULL) {
         free(final_list); // Освобождаем память перед возвратом
+        free_count++;
         return NULL;
     }
 
@@ -181,6 +194,7 @@ LS** check_conditions(char* token, LS* head)
     char* cond; // Это вообще не нужная переменная
     char* value; // Тут значение для сравнения по условию (Короче всё, что после символов операции сравнения)
     LS** values_to_return = (LS*)malloc(sizeof(LS*) * 100); // TODO Длину этого массива
+    malloc_count++;
     int i = 0;
     LS* copy_head;
     for (ptr; *ptr != '\0'; ptr++) // Определяем тип операции поле, значение, условие
@@ -889,6 +903,7 @@ void timestamp_to_date(time_t timestamp, char* output) {
 LS* create_node(time_t comes, char* sender, char* name, \
     int weight, int count, enum Images images, char* worker) {
     LS* new_node = (LS*)malloc(sizeof(LS));
+    malloc_count++;
     if (new_node == NULL) {
         printf("Ошибка выделения памяти!\n");
         exit(1);
@@ -926,20 +941,24 @@ void add_node(time_t comes, char* sender, char* name, \
 void del_node(LS* node_to_del) // Удалить элемент из ЛС node - указатель на удаляемый э-нт
 {
     // Если удаляемый узел — голова списка
-    if (Head == node_to_del) {
+    if (Head == node_to_del) 
+    {
         Head = node_to_del->next;
         free(node_to_del);
+        free_count++;
         return;
     }
 
     // Ищем предыдущий узел перед nodeToDelete
     LS* current = Head;
-    while (current != NULL && current->next != node_to_del) {
+    while (current != NULL && current->next != node_to_del) 
+    {
         current = current->next;
     }
 
     // Если узел не найден в списке
-    if (current == NULL) {
+    if (current == NULL) 
+    {
         printf("Узел не принадлежит списку!\n");
         return;
     }
@@ -947,6 +966,7 @@ void del_node(LS* node_to_del) // Удалить элемент из ЛС node -
     // Перелинковка и удаление
     current->next = node_to_del->next;
     free(node_to_del);
+    free_count++;
     return;
 }
 
@@ -989,13 +1009,18 @@ void upd_node(LS* node, char* update_fields)
         {
             strcpy(node->worker, value);
         }
+        free(string);
+        free_count++;
     }
+    free(tokens);
+    free_count++;
     return;
 }
 /* Команды к БД */
 
-void select(char* args) // TODO Переписать strtok на что-то адекватное, а то не работает ни ку я
+void select(char* args)
 {
+    int count_nodes_out = 0;
     int count = 0;
     char** tokens = split(args, ' ', &count);
     char* fields_out = tokens[0];
@@ -1003,6 +1028,12 @@ void select(char* args) // TODO Переписать strtok на что-то а�
     LS** list = check_conditions(token, Head);
     if (count == 2) // Если всего одно условие - выводим все подошедшие записи
     {
+        for (int i = 0; *(list + i) != NULL; i++)
+        {
+            count_nodes_out++;
+        }
+        printf("select: %d\n", count_nodes_out);
+        fprintf(out, "select %d\n", count_nodes_out);
         for (int i = 0; *(list + i) != NULL; i++)
         {
             print_node_fields(list[i], fields_out);
@@ -1020,14 +1051,25 @@ void select(char* args) // TODO Переписать strtok на что-то а�
         }
         for (int i = 0; *(list + i) != NULL; i++)
         {
+            count_nodes_out++;
+        }
+        printf("select: %d\n", count_nodes_out);
+        fprintf(out, "select %d\n", count_nodes_out);
+        for (int i = 0; *(list + i) != NULL; i++)
+        {
             print_node_fields(list[i], fields_out);
         }
     }
+    free(list);
+    free_count++;
+    free(tokens);
+    free_count++;
     return;
 }
 
 void delete(char* args)
 {
+    int count_deleted_nodes = 0;
     int count = 0;
     char** tokens = split(args, ' ', &count);
     LS** list = check_conditions(tokens[0], Head);
@@ -1036,6 +1078,7 @@ void delete(char* args)
         for (int i = 0; *(list + i) != NULL; i++)
         {
             del_node(list[i]);
+            count_deleted_nodes++;
         }
 
     }
@@ -1052,13 +1095,18 @@ void delete(char* args)
         for (int i = 0; *(list + i) != NULL; i++)
         {
             del_node(list[i]);
+            count_deleted_nodes++;
         }
     }
+    printf("delete: %d\n", count_deleted_nodes);
+    fprintf(out, "delete: %d\n", count_deleted_nodes);
     return;
 }
 
 void insert(char* args)
 {
+    char copy_args[200];
+    strcpy(copy_args, args);
     time_t comes;
     char* sender = NULL;
     char* name = NULL;
@@ -1079,34 +1127,34 @@ void insert(char* args)
         {
             value[strlen(value) - 1] = '\0';
         }
-        if (strcmp(field, "comes") == 0 && was_comes == 1) { printf("input error"); return; }
+        if (strcmp(field, "comes") == 0 && was_comes == 1) { printf("incorrect: insert %s\n", copy_args);; return; }
         if (strcmp(field, "comes") == 0 && was_comes == 0) { comes = date_to_timestamp(value); was_comes = 1; }
 
-        if (strcmp(field, "sender") == 0 && was_sender == 1) { printf("input error"); return; }
+        if (strcmp(field, "sender") == 0 && was_sender == 1) { printf("incorrect: insert %s\n", copy_args);; return; }
         if (strcmp(field, "sender") == 0 && was_sender == 0) { sender = value; was_sender = 1; }
 
-        if (strcmp(field, "name") == 0 && was_name == 1) { printf("input error"); return; }
+        if (strcmp(field, "name") == 0 && was_name == 1) { printf("incorrect: insert %s\n", copy_args);; return; }
         if (strcmp(field, "name") == 0 && was_name == 0) { name = value; was_name = 1; }
 
-        if (strcmp(field, "weight") == 0 && was_weight == 1) { printf("input error"); return; }
+        if (strcmp(field, "weight") == 0 && was_weight == 1) { printf("incorrect: insert %s\n", copy_args);; return; }
         if (strcmp(field, "weight") == 0 && was_weight == 0) { weight = atoi(value); was_weight = 1; }
 
-        if (strcmp(field, "count") == 0 && was_count == 1) { printf("input error"); return; }
+        if (strcmp(field, "count") == 0 && was_count == 1) { printf("incorrect: insert %s\n", copy_args);; return; }
         if (strcmp(field, "count") == 0 && was_count == 0) { count = atoi(value); was_count = 1; }
 
-        if (strcmp(field, "images") == 0 && was_images == 1) { printf("input error"); return; }
+        if (strcmp(field, "images") == 0 && was_images == 1) { printf("incorrect: insert %s\n", copy_args);; return; }
         if (strcmp(field, "images") == 0 && was_images == 0) 
         { 
             images = str_to_image(value); 
             if (images == (enum Images)UNKNOWN)
             {
-                printf("Unknown color!");
+                printf("Unknown image!");
                 return;
             }
             was_images = 1; 
         }
 
-        if (strcmp(field, "worker") == 0 && was_worker == 1) { printf("input error"); return; }
+        if (strcmp(field, "worker") == 0 && was_worker == 1) { printf("incorrect: insert %s\n", copy_args);; return; }
         if (strcmp(field, "worker") == 0 && was_worker == 0) { worker = value; was_worker = 1; }
         pair = strtok(NULL, ",");
     }
@@ -1116,14 +1164,19 @@ void insert(char* args)
     }
     else
     {
-        printf("Not everyone fields: input error");
+        printf("incorrect: insert %s\n", copy_args);
         return;
     }
+    records_count++;
+    printf("insert: %d\n", records_count);
+    fprintf(out, "insert: %d\n", records_count);
+
     return;
 }
 
 void update(char* args)
 {
+    int count_updated_fields = 0;
     int count = 0;
     char** tokens = split(args, ' ', &count);
     LS** list = check_conditions(tokens[1], Head);
@@ -1133,18 +1186,20 @@ void update(char* args)
         while (node != NULL)
         {
             upd_node(node, tokens[0]);
+            count_updated_fields++;
             node = node->next;
         }
     }
-    if (count == 2)
+    if (count == 2) // Одно условие
     {
         for (int i = 0; *(list + i) != NULL; i++)
         {
             upd_node(list[i], tokens[0]);
+            count_updated_fields++;
         }
 
     }
-    else
+    else // Несколько условий
     {
         for (int i = 2; i < count; i++)
         {
@@ -1157,18 +1212,29 @@ void update(char* args)
         for (int i = 0; *(list + i) != NULL; i++)
         {
             upd_node(list[i], tokens[0]);
+            count_updated_fields++;
+
         }
     }
+    free(tokens);
+    free(list);
+    free_count++;
+    free_count++;
+    printf("update: %d\n", count_updated_fields);
+    fprintf(out, "update: %d\n", count_updated_fields);
     return;
 }
 
-void uniq(char* args) {
-    if (Head == NULL) {
+void uniq(char* args) 
+{
+    if (Head == NULL) 
+    {
         return;
     }
 
     LS* current = Head;
     LS* previous = NULL;
+    int count_nodes_to_delete = 0;
     int count = 0;
     char** fields = split(args, ',', &count);
     while (current != NULL) 
@@ -1227,7 +1293,7 @@ void uniq(char* args) {
                 {
                     if (strcmp(current->worker, runner->worker) == 0)
                     {
-                        is_equale = 0;
+                        is_equale = 1;
                     }
                 }
             }
@@ -1238,22 +1304,37 @@ void uniq(char* args) {
             runner = runner->next;
         }
 
-        if (is_equale) {
+        if (is_equale) 
+        {
             LS* to_delete = current;
-            if (previous != NULL) {
+            /*
+            if (previous != NULL) 
+            {
                 previous->next = current->next;
             }
-            else {
+            else 
+            {
                 Head = current->next; //
             }
             current = current->next;
+            count_nodes_to_delete++;
             free(to_delete);
+            free_count++;
+            */
+            del_node(runner);
+            count_nodes_to_delete++;
         }
-        else {
+        else 
+        {
             previous = current;
             current = current->next;
         }
     }
+    free(fields);
+    free_count++;
+    printf("uniq: %d\n", count_nodes_to_delete);
+    fprintf(out, "uniq: %d\n", count_nodes_to_delete);
+    return;
 }
 
 
@@ -1366,7 +1447,8 @@ void print_node_fields(LS* node, char* Fields) // node - Указаель на �
 int main()
 {
     setlocale(LC_ALL, "rus");
-    FILE* fi = fopen("commands.txt", "r");
+    FILE* fi = fopen("input.txt", "r");
+    out = fopen("output.txt", "w");
     char command[1000];
     while (fgets(command, 1000, fi))
     {
@@ -1378,9 +1460,26 @@ int main()
         if (!strcmp(str, "update")) { update(strtok(NULL, "\0")); }
         if (!strcmp(str, "uniq")) {     uniq(strtok(NULL, "\0")); }
 
-        if (!strcmp(str, "print")) {print_LS(Head); }
+        if (!strcmp(str, "print")) {print_LS(Head); } // Небольшая отсебятина, вызов print без аргументов выводит весь лист
     }
+    fclose(fi);
+    while (1)
+    {
+        gets(command);
+        char* str; // select, delete, insert, update, uniq
+        str = strtok(command, " ");
+        if (!strcmp(str, "insert")) { insert(strtok(NULL, "\0")); }
+        if (!strcmp(str, "select")) { select(strtok(NULL, "\0")); }
+        if (!strcmp(str, "delete")) { delete(strtok(NULL, "\0")); }
+        if (!strcmp(str, "update")) { update(strtok(NULL, "\0")); }
+        if (!strcmp(str, "uniq")) { uniq(strtok(NULL, "\0")); }
+
+        if (!strcmp(str, "print")) { print_LS(Head); } // Небольшая отсебятина, вызов print без аргументов выводит весь лист
+        if (!strcmp(str, "exit")) { break; } // Небольшая отсебятина, чтобы заканчивать работу с консолью
+    }
+    FILE* fo = fopen("memstat.txt", "w");
+    fprintf(fo, "malloc: %d\nrealloc: %d\ncalloc: %d\nfree: %d", malloc_count, realloc_count, calloc_count, free_count);
     // TODO work with terminal
-    //print_LS(Head);
+
     return 1;
 }
