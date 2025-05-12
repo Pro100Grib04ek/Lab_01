@@ -115,7 +115,7 @@ char** split(char* str, char delim, int* count)
 
     while (*end) 
     {
-        if (*end == delim || *end == '\0' || *end == '\n') 
+        if (*end == delim || *end == '\0' || *end == '\n')
         {
             *end = '\0';  
             tokens[i++] = token;
@@ -172,7 +172,8 @@ LS** AND(LS** list1, LS** list2)
             }
         }
     }
-
+    free(list1);
+    free_count++;
     final_list[i] = NULL; 
     return final_list;
 }
@@ -1033,6 +1034,26 @@ void select(char* args)
     char** tokens = split(args, ' ', &count);
     char* fields_out = tokens[0];
     char* token = tokens[1]; // token: field(op)value
+    if (count == 1)
+    {
+        LS* current = Head;
+        while (current != NULL)
+        {
+            count_nodes_out++;
+            current = current->next;
+        }
+        current = Head;
+        printf("select: %d\n", count_nodes_out);
+        fprintf(out, "select %d\n", count_nodes_out);
+        while (current != NULL)
+        {
+            print_node_fields(current, fields_out);
+            current = current->next;
+        }
+        free(tokens);
+        free_count++;
+        return;
+    }
     LS** list = check_conditions(token, Head);
     if (count == 2) // Если всего одно условие - выводим все подошедшие записи
     {
@@ -1487,7 +1508,5 @@ int main()
     }
     FILE* fo = fopen("memstat.txt", "w");
     fprintf(fo, "malloc: %d\nrealloc: %d\ncalloc: %d\nfree: %d", malloc_count, realloc_count, calloc_count, free_count);
-    // TODO work with terminal
-
     return 1;
 }
